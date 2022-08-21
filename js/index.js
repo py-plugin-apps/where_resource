@@ -7,6 +7,11 @@ export const rule = {
     priority: 800,
     describe: "查找资源",
   },
+  where_help: {
+    reg: "^#地图资源查询教程",
+    priority: 800,
+    describe: "查找资源",
+  },
 };
 
 export async function where_source(e) {
@@ -29,4 +34,8 @@ export async function where_source(e) {
     },
   });
   return true;
+}
+
+export async function where_help(e) {
+  e.reply("发送 #[资源名]在[地图名]哪 获取资源坐标，默认七国地图。例如 #甜甜花在哪，#丘丘人在层岩哪")
 }
