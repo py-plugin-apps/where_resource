@@ -1,5 +1,5 @@
 import re
-from .util import ResourceMap
+from .util import ResourceMap, Error
 from core import Handler, Response, Request
 
 package = "where_resource"
@@ -19,10 +19,10 @@ async def where_resource_is(request: Request) -> Response:
         map_id = "12"
     else:
         map_id = "2"
-    res = await ResourceMap.draw(res["name"], map_id)
 
-    if res:
+    try:
+        res = await ResourceMap.draw(res["name"], map_id)
+
         return Response(image=res)
-    else:
-        return Response("资源数量为0！")
-
+    except Error as e:
+        return Response(str(e))

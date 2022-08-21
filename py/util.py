@@ -12,6 +12,14 @@ from core import BytesIOToBytes
 ICON_PATH = Path(os.path.dirname(os.path.abspath(__file__))) / "icon"
 
 
+class Error(Exception):
+    def __init__(self, msg):
+        self.msg = msg
+
+    def __str__(self):
+        return self.msg
+
+
 class Downloader:
     map_list = ['2', '7', '9', '12']
     data = {
@@ -111,7 +119,11 @@ class ResourceMap:
 
     def __init__(self, client: httpx.AsyncClient, name: str, map_id: str):
         self.client = client
-        self.resource_id = self.downloader.data["can_query_type_list"][name]
+        try:
+            self.resource_id = self.downloader.data["can_query_type_list"][name]
+        except KeyError:
+            raise Error(f"无法找到资源：{name}，请换个名字试试")
+
         self.all_resource_point_list = self.downloader.data["all_resource_point_list"][map_id]
         self.map_id = map_id
         self.center = None
@@ -219,7 +231,7 @@ class ResourceMap:
         img.save(bio, format='JPEG')
         return BytesIOToBytes(bio)
 
-    async def _draw(self) -> Optional[bytes]:
+    async def _draw(self) -> bytes:
         map_info = await self.get_map_info()
         resource_map = await self.create_map(map_info)
         resource_point_list = list(await self.get_resource_point_list())
@@ -228,7 +240,7 @@ class ResourceMap:
             resource_map = await self.crop(resource_map, resource_point_list)
             return await self.toBytes(resource_map)
         else:
-            return None
+            raise Error("地图中该资源数目为0")
 
     @classmethod
     async def draw(cls, name: str, map_id: str = "2"):
