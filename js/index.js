@@ -38,4 +38,5 @@ export async function where_source(e) {
 
 export async function where_help(e) {
   e.reply("发送 #[资源名]在[地图名]哪 获取资源坐标，默认七国地图。例如 #甜甜花在哪，#丘丘人在层岩哪")
+  return true
 }
