@@ -1,7 +1,7 @@
 *.pyc
 __pycache__
 .idea/
-py/icon
+py/icon/*
 !py/icon/0.png
 !py/icon/box.png
 !py/icon/box_alpha.png
