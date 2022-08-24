@@ -159,7 +159,7 @@ class ResourceMap:
         if self.map_cache[self.map_id]:
             self.center = self.map_cache[self.map_id]["center"]
             self.x_start, self.y_start=self.map_cache[self.map_id]["start"]
-            return self.map_cache[self.map_id]["map"]
+            return self.map_cache[self.map_id]["map"].copy()
 
         map_info = json.loads(map_info)
 
