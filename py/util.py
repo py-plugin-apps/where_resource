@@ -7,7 +7,8 @@ from pathlib import Path
 
 import httpx
 from PIL import Image, ImageMath
-from core import BytesIOToBytes
+
+# from core import BytesIOToBytes
 
 ICON_PATH = Path(os.path.dirname(os.path.abspath(__file__))) / "icon"
 
@@ -32,7 +33,6 @@ class Downloader:
     headers = 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)'
 
     def __init__(self, client: httpx.AsyncClient):
-        print(123)
         self.client = client
 
     async def get(self, url: str, query: str = None) -> httpx.Response:
@@ -116,6 +116,12 @@ class Downloader:
 class ResourceMap:
     map_url = "https://waf-api-takumi.mihoyo.com/common/map_user/ys_obc/v1/map/info?map_id=%s&app_sn=ys_obc&lang=zh-cn"
     downloader = None
+    map_cache = {
+        '2': None,
+        '7': None,
+        '9': None,
+        '12': None
+    }
 
     def __init__(self, client: httpx.AsyncClient, name: str, map_id: str):
         self.client = client
@@ -150,8 +156,12 @@ class ResourceMap:
         return (await self.get(self.map_url % self.map_id)).json()["data"]["info"]["detail"]
 
     async def create_map(self, map_info) -> Image:
+        if self.map_cache[self.map_id]:
+            return self.map_cache[self.map_id]
+
         map_info = json.loads(map_info)
-        map_url_list = map_info['slices'][0]
+
+        map_url_list = map_info['slices']
         origin = map_info["origin"]
         x_start = map_info['total_size'][1]
         y_start = map_info['total_size'][1]
@@ -176,16 +186,22 @@ class ResourceMap:
         y = int(y_end - y_start)
 
         raw_map: Image = Image.new("RGB", (x, y))
-        x_offset = 0
+        x_offset = y_offset = 0
 
-        done = await asyncio.gather(*map(lambda x: asyncio.create_task(self.get(x["url"])), map_url_list))
+        for map_url in map_url_list:
+            done = await asyncio.gather(*map(lambda x: asyncio.create_task(self.get(x["url"])), map_url))
+            _y_offset = 0
+            for i in done:
+                part = Image.open(BytesIO(i.content))
+                raw_map.show()
+                raw_map.paste(part, (int(-x_start) + x_offset, int(-y_start) + y_offset))
+                x_offset += part.size[0]
+                _y_offset = part.size[1]
 
-        for i in done:
-            part = Image.open(BytesIO(i.content))
-            raw_map.paste(part, (int(-x_start) + x_offset, int(-y_start)))
-            x_offset += part.size[0]
-
+            x_offset = 0
+            y_offset += _y_offset
         self.x_start, self.y_start = raw_map.size
+        self.map_cache[self.map_id] = raw_map
         return raw_map
 
     async def get_resource_point_list(self) -> Iterator[Tuple[int, int]]:
@@ -248,3 +264,5 @@ class ResourceMap:
             cls.downloader = await Downloader.create()
         async with httpx.AsyncClient() as client:
             return await cls(client, name, map_id)._draw()
+
+
