@@ -204,7 +204,7 @@ class ResourceMap:
         self.x_start, self.y_start = raw_map.size
 
         self.map_cache[self.map_id] = {
-            "map": raw_map,
+            "map": raw_map.copy(),
             "center": self.center,
             "start": (self.x_start, self.y_start)
         }
