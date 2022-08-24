@@ -8,7 +8,7 @@ from pathlib import Path
 import httpx
 from PIL import Image, ImageMath
 
-# from core import BytesIOToBytes
+from core import BytesIOToBytes
 
 ICON_PATH = Path(os.path.dirname(os.path.abspath(__file__))) / "icon"
 
@@ -117,10 +117,10 @@ class ResourceMap:
     map_url = "https://waf-api-takumi.mihoyo.com/common/map_user/ys_obc/v1/map/info?map_id=%s&app_sn=ys_obc&lang=zh-cn"
     downloader = None
     map_cache = {
-        '2': None,
-        '7': None,
-        '9': None,
-        '12': None
+        '2': {},
+        '7': {},
+        '9': {},
+        '12': {}
     }
 
     def __init__(self, client: httpx.AsyncClient, name: str, map_id: str):
@@ -157,7 +157,9 @@ class ResourceMap:
 
     async def create_map(self, map_info) -> Image:
         if self.map_cache[self.map_id]:
-            return self.map_cache[self.map_id]
+            self.center = self.map_cache[self.map_id]["center"]
+            self.x_start, self.y_start=self.map_cache[self.map_id]["start"]
+            return self.map_cache[self.map_id]["map"]
 
         map_info = json.loads(map_info)
 
@@ -193,7 +195,6 @@ class ResourceMap:
             _y_offset = 0
             for i in done:
                 part = Image.open(BytesIO(i.content))
-                raw_map.show()
                 raw_map.paste(part, (int(-x_start) + x_offset, int(-y_start) + y_offset))
                 x_offset += part.size[0]
                 _y_offset = part.size[1]
@@ -201,7 +202,12 @@ class ResourceMap:
             x_offset = 0
             y_offset += _y_offset
         self.x_start, self.y_start = raw_map.size
-        self.map_cache[self.map_id] = raw_map
+
+        self.map_cache[self.map_id] = {
+            "map": raw_map,
+            "center": self.center,
+            "start": (self.x_start, self.y_start)
+        }
         return raw_map
 
     async def get_resource_point_list(self) -> Iterator[Tuple[int, int]]:
@@ -264,5 +270,3 @@ class ResourceMap:
             cls.downloader = await Downloader.create()
         async with httpx.AsyncClient() as client:
             return await cls(client, name, map_id)._draw()
-
-
