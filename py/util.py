@@ -156,11 +156,6 @@ class ResourceMap:
         return (await self.get(self.map_url % self.map_id)).json()["data"]["info"]["detail"]
 
     async def create_map(self, map_info) -> Image:
-        if self.map_cache[self.map_id]:
-            self.center = self.map_cache[self.map_id]["center"]
-            self.x_start, self.y_start=self.map_cache[self.map_id]["start"]
-            return self.map_cache[self.map_id]["map"].copy()
-
         map_info = json.loads(map_info)
 
         map_url_list = map_info['slices']
@@ -254,8 +249,13 @@ class ResourceMap:
         return BytesIOToBytes(bio)
 
     async def _draw(self) -> bytes:
-        map_info = await self.get_map_info()
-        resource_map = await self.create_map(map_info)
+        if self.map_cache[self.map_id]:
+            self.center = self.map_cache[self.map_id]["center"]
+            self.x_start, self.y_start = self.map_cache[self.map_id]["start"]
+            resource_map = self.map_cache[self.map_id]["map"].copy()
+        else:
+            map_info = await self.get_map_info()
+            resource_map = await self.create_map(map_info)
         resource_point_list = list(await self.get_resource_point_list())
         if resource_point_list:
             resource_map = await self.paste_resource(resource_map, resource_point_list)
