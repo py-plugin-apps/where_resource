@@ -1,10 +1,29 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
-</head>
-<body>
-$END$
-</body>
-</html>
+{{extend defaultLayout}}
+
+{{block 'css'}}
+<link rel="stylesheet" type="text/css" href="{{_res_path}}/index.css"/>
+{{/block}}
+
+{{block 'main'}}
+<div class="head-box">
+  <div class="title">地图资源统计</div>
+  <div class="sub-title">发送 #[资源名]在[地图名]哪 获取资源坐标，默认七国地图。</div>
+  <div class="sub-title">例如 #甜甜花在哪，#丘丘人在层岩哪</div>
+</div>
+
+<div class="wrap">
+  {{each data cell}}
+  <div class="cell">
+    <div class="title">{{cell.name}}</div>
+    <div class="outer">
+    {{each cell.children item}}
+      <div class="box">
+        <img class="img" width="50%" src="{{item.icon}}">
+        <div class="text">{{item.name}}</div>
+      </div>
+    {{/each}}
+    </div>
+  </div>
+  {{/each}}
+</div>
+{{/block}}
