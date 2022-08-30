@@ -1,5 +1,6 @@
 import { FrameToFrame, createEvent } from "../../../core/client/client.js";
 import { segment } from "oicq";
+import { render } from "../../../core/util/render.js";
 
 export const rule = {
   where_source: {
@@ -15,6 +16,7 @@ export const rule = {
 };
 
 export async function where_source(e) {
+  console.log(1);
   FrameToFrame({
     _package: "where_resource",
     _handler: "where_resource_is",
@@ -37,6 +39,21 @@ export async function where_source(e) {
 }
 
 export async function where_help(e) {
-  e.reply("发送 #[资源名]在[地图名]哪 获取资源坐标，默认七国地图。例如 #甜甜花在哪，#丘丘人在层岩哪")
-  return true
+  FrameToFrame({
+    _package: "where_resource",
+    _handler: "where_resource_help",
+    params: {
+      event: await createEvent(e),
+    },
+    onData: async (error, response) => {
+      if (error) {
+        console.log(error.stack);
+      } else {
+        render("where_resource", "where_help", { data: JSON.parse(response.message) },"jpeg").then(img => {
+          e.reply(img);
+        });
+      }
+    },
+  });
+  return true;
 }

@@ -1,8 +1,14 @@
 import re
+import json
 from .util import ResourceMap, Error
 from core import Handler, Response, Request
 
 package = "where_resource"
+
+
+@Handler.FrameToFrame
+async def where_resource_help(request: Request) -> Response:
+    return Response(json.dumps(await ResourceMap.help()))
 
 
 @Handler.FrameToFrame

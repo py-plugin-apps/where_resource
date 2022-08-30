@@ -1,8 +1,7 @@
 import os
-import json
 import asyncio
 from io import BytesIO
-from typing import List, Iterator, Tuple, Optional
+from typing import List, Iterator, Tuple
 from pathlib import Path
 
 import httpx
@@ -31,6 +30,7 @@ class Downloader:
     label_url = 'https://api-static.mihoyo.com/common/blackboard/ys_obc/v1/map/label/tree?app_sn=ys_obc'
     point_list_url = 'https://api-static.mihoyo.com/common/blackboard/ys_obc/v1/map/point/list?map_id=%s&app_sn=ys_obc'
     headers = 'Mozilla/4.0 (compatible; MSIE 8.0; Windows NT 5.1; Trident/4.0)'
+    help_list = []
 
     def __init__(self, client: httpx.AsyncClient):
         self.client = client
@@ -87,10 +87,26 @@ class Downloader:
     async def get_data(self) -> None:
         label_data = (await self.get(self.label_url)).json()
         for label in label_data["data"]["tree"]:
+            help_cell = {
+                "name": label["name"],
+                "children": []
+            }
             self.data["all_resource_type"][str(label["id"])] = label
             for sublist in label["children"]:
                 self.data["all_resource_type"][str(sublist["id"])] = sublist
-                self.data["can_query_type_list"][sublist["name"]] = str(sublist["id"])
+                if sublist["name"] in self.data["can_query_type_list"]:
+                    self.data["can_query_type_list"][sublist["name"] + f"[{label['name']}]"] = str(sublist["id"])
+                    help_cell["children"].append({
+                        "name": sublist["name"] + f"[{label['name']}]",
+                        "icon": sublist["icon"]
+                    })
+                else:
+                    self.data["can_query_type_list"][sublist["name"]] = str(sublist["id"])
+                    help_cell["children"].append({
+                        "name": sublist["name"],
+                        "icon": sublist["icon"]
+                    })
+            self.help_list.append(help_cell)
 
     async def get_resources(self) -> None:
         done, _ = await asyncio.wait(
@@ -270,3 +286,9 @@ class ResourceMap:
             cls.downloader = await Downloader.create()
         async with httpx.AsyncClient() as client:
             return await cls(client, name, map_id)._draw()
+
+    @classmethod
+    async def help(cls):
+        if not cls.downloader:
+            cls.downloader = await Downloader.create()
+        return cls.downloader.help_list
