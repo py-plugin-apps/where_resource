@@ -11,6 +11,7 @@ from PIL import Image, ImageMath
 from core import BytesIOToBytes
 
 ICON_PATH = Path(os.path.dirname(os.path.abspath(__file__))) / "icon"
+TRANSPORT_PATH = Path(os.path.dirname(os.path.abspath(__file__))) / "transport"
 
 
 class Error(Exception):
@@ -24,6 +25,7 @@ class Error(Exception):
 class Downloader:
     map_list = ['2', '7', '9', '12']
     data = {
+        "transport": [],
         "all_resource_type": {},
         "can_query_type_list": {},
         "all_resource_point_list": {},
@@ -45,7 +47,30 @@ class Downloader:
     async def init(self) -> None:
         await self.get_data()
         await self.get_icon()
+        await self.get_transport()
         await self.get_resources()
+
+    async def get_transport(self) -> None:
+        task_list = list(filter(
+            lambda x: x["id"] in self.data["transport"] and not (TRANSPORT_PATH / f"{x['id']}.png").exists(),
+            self.data["all_resource_type"].values()
+        ))
+
+        if not task_list:
+            return
+
+        done, _ = await asyncio.wait(
+            map(lambda x: asyncio.create_task(self.get(x["icon"]), name=x["id"]), task_list),
+            timeout=10
+        )
+
+        for i in done:
+            icon = Image.open(BytesIO(i.result().content))
+            icon_path = TRANSPORT_PATH / f"{i.get_name()}.png"
+            icon = icon.resize((150, 150))
+
+            with open(icon_path, "wb") as icon_file:
+                icon.save(icon_file)
 
     async def get_icon(self) -> None:
         task_list = list(filter(
@@ -87,6 +112,7 @@ class Downloader:
 
     async def get_data(self) -> None:
         label_data = (await self.get(self.label_url)).json()
+        self.data["transport"] = list(map(lambda x: x["id"], label_data["data"]["tree"][0]["children"]))
         for label in label_data["data"]["tree"]:
             help_cell = {
                 "name": label["name"],
@@ -215,12 +241,34 @@ class ResourceMap:
             y_offset += _y_offset
         self.x_start, self.y_start = raw_map.size
 
+        transport_list = filter(lambda x: x["label_id"] in self.downloader.data["transport"],
+                                self.all_resource_point_list)
+        raw_map = await self.paste_transport(raw_map, transport_list)
+
         self.map_cache[self.map_id] = {
             "map": raw_map.copy(),
             "center": self.center,
             "start": (self.x_start, self.y_start)
         }
+
         return raw_map
+
+    async def paste_transport(self, img: Image, transport_list) -> Image:
+        for transport in transport_list:
+            x = int(transport["x_pos"] + self.center[0])
+            y = int(transport["y_pos"] + self.center[1])
+            label_id = transport["label_id"]
+            if (ICON_PATH / f"{label_id}.png").exists():
+                resource_icon = Image.open(TRANSPORT_PATH / f"{label_id}.png")
+            else:
+                resource_icon = Image.open(TRANSPORT_PATH / "0.png")
+            resource_icon = resource_icon.resize((int(150 * 0.5), int(150 * 0.5)))
+            img.paste(
+                resource_icon,
+                (x + self.resource_icon_offset[0], y + self.resource_icon_offset[1]),
+                resource_icon,
+            )
+        return img
 
     async def get_resource_point_list(self) -> Iterator[Tuple[int, int]]:
         return map(
